@@ -1,0 +1,6 @@
+{
+  "name": "drive-health", "version": "1.0.0", "private": true,
+  "description": "Local Windows HDD and SSD health dashboard",
+  "scripts": { "start": "node server.mjs", "test": "node --test" },
+  "engines": { "node": ">=22.13" }
+}

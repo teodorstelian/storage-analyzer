@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Records · Drive Health</title><link rel="stylesheet" href="/style.css"><script src="/records.js" defer></script></head>
+<body><aside><a class="brand" href="/">◈ <span>Drive Health<small>STORAGE MONITOR</small></span></a><a class="nav" href="/">▦ &nbsp; Overview</a><a class="nav active" href="/records" aria-current="page">◷ &nbsp; Records</a><div class="sidebar-bottom"><span class="dot"></span> Local monitoring<small>Your drive data stays on this device.</small></div></aside>
+<main><header><div class="breadcrumb">WORKSPACE <span>/</span> RECORDS</div><span class="local">◉ &nbsp; Saved locally</span></header>
+<section class="heading"><div><div class="eyebrow">YOUR STORAGE, OVER TIME</div><h1>Drive records<span>.</span></h1><p>See which drives have worked the hardest.</p></div><button id="reload">↻ &nbsp; Refresh records</button></section>
+<div id="leaders" class="summary" aria-live="polite"></div>
+<div class="section-title"><h2>All-time rankings</h2><label class="history-caption">Rank by <select id="ranking"><option value="lifetimeWritesBytes">Most Lifetime Writes</option><option value="powerOnHours">Longest power-on time</option><option value="temperature">Highest temperature</option><option value="wear">Most rated life used</option></select></label></div>
+<p class="history-caption">Highest observed value per drive across all saved scans, including previously connected drives. Cumulative counters are never added together. Missing readings are unranked. These are records observed by this app, not a complete lifetime history.</p>
+<div id="rankings" aria-live="polite">Loading records…</div><p id="record-status" class="history-caption" role="status"></p>
+<div class="note"><div>ⓘ</div><div><strong>A record is a measurement, not a health score.</strong><p>More writes and longer operating time do not by themselves mean a drive is failing. Counter resets do not erase a previously recorded peak.</p></div></div>
+<footer><span>DRIVE HEALTH / Local records</span><a href="/">Back to drive overview →</a></footer></main></body></html>
