@@ -26,7 +26,7 @@ test('fallback discovers devices and matches serials regardless of enumeration o
   await enrichSmart(scan, async (file, args) => {
     if (args[0] === '--scan-open') return { devices: [{ name: '/dev/nvme0', type: 'nvme' }, { name: '/dev/nvme1', type: 'nvme' }] };
     assert.ok(args.includes('-a')); assert.ok(args.includes('-j'));
-    return { serial_number: args.at(-1) === '/dev/nvme0' ? 'b' : 'a', nvme_smart_health_information_log: { power_on_hours: 345, data_units_written: 0 } };
+    return { serial_number: args.at(-1) === '/dev/nvme0' ? 'b' : 'a', nvme_smart_health_information_log: { temperature: 35, power_on_hours: 345, data_units_written: 0 } };
   }, 'test-smartctl');
   assert.equal(scan.drives[0].powerOnHours, 345); assert.equal(scan.drives[1].powerOnHours, 345);
   assert.deepEqual(scan.warnings, []);
@@ -82,8 +82,8 @@ test('queries SMART for writes even when Windows already supplies power-on hours
 
 test('missing USB writes warning identifies only affected drives and counters', async () => {
   const scan = { warnings: [], drives: [
-    { id: '0', name: 'KINGSTON', busType: 'NVMe', powerOnHours: 345, lifetimeWritesBytes: 12250000000000 },
-    { id: '1', name: 'Seagate M3 Portable', busType: 'USB', powerOnHours: 11856 },
+    { id: '0', name: 'KINGSTON', busType: 'NVMe', temperature: 40, powerOnHours: 345, lifetimeWritesBytes: 12250000000000 },
+    { id: '1', name: 'Seagate M3 Portable', busType: 'USB', temperature: 35, powerOnHours: 11856 },
   ] };
   await enrichSmart(scan, async () => { throw Object.assign(new Error('missing'), { code: 'ENOENT' }); }, 'missing');
   assert.equal(scan.warnings.length, 1);
@@ -93,7 +93,27 @@ test('missing USB writes warning identifies only affected drives and counters', 
 });
 
 test('complete native readings do not call optional tools or warn', async () => {
-  const scan = { warnings: [], drives: [{ powerOnHours: 345, lifetimeWritesBytes: 0 }] };
+  const scan = { warnings: [], drives: [{ temperature: 35, powerOnHours: 345, lifetimeWritesBytes: 0 }] };
   await enrichSmart(scan, async () => { throw new Error('Should not run'); }, 'missing');
   assert.deepEqual(scan.warnings, []);
+});
+
+test('USB ATA identity matches the underlying drive without changing stored identity', async () => {
+  const drive = { serial: 'bridge', ataSerial: 'disk', uniqueId: 'keep', powerOnHours: 12, lifetimeWritesBytes: 0 };
+  const scan = { warnings: [], drives: [drive] };
+  await enrichSmart(scan, async (file, args) => args[0] === '--scan-open'
+    ? { devices: [{ name: '/dev/sda', type: 'sat' }] }
+    : { serial_number: 'DISK', temperature: { current: 32 } }, 'test');
+  assert.equal(drive.temperature, 32);
+  assert.equal(drive.serial, 'bridge');
+  assert.equal(drive.uniqueId, 'keep');
+  assert.deepEqual(scan.warnings, []);
+});
+
+test('colliding USB and ATA serials remain ambiguous', async () => {
+  const scan = { warnings: [], drives: [{ serial: 'bridge', ataSerial: 'disk' }, { serial: 'disk' }] };
+  await enrichSmart(scan, async (file, args) => args[0] === '--scan-open'
+    ? { devices: [{ name: '/dev/sda', type: 'sat' }] }
+    : { serial_number: 'disk', temperature: { current: 32 } }, 'test');
+  assert.ok(scan.drives.every(d => d.temperature === undefined));
 });

@@ -63,9 +63,8 @@ const server = http.createServer(async (req, res) => {
   }
   if (req.method !== 'GET') { res.writeHead(405).end(); return; }
   if (path === '/grafana-dashboard.json') {
-    res.setHeader('Content-Type','application/json');
-    res.setHeader('Content-Disposition','attachment; filename="drive-health.json"');
-    res.end(await readFile(new URL('./grafana/drive-health.json', import.meta.url))); return;
+    res.writeHead(302, {Location: 'https://github.com/teodorstelian/rig-pulse/tree/main/grafana/dashboards'});
+    res.end(); return;
   }
   if (path === '/api/records') {
     res.setHeader('Content-Type', 'application/json');

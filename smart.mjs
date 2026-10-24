@@ -5,9 +5,12 @@ import { displayName } from './names.mjs';
 
 const valid = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const serial = (value) => String(value || '').trim().toUpperCase();
+const matchesSerial = (drive, value) => Boolean(serial(value)) &&
+  [drive.serial, drive.ataSerial].some((candidate) => serial(candidate) === serial(value));
 function reportMissing(scan, reason) {
   for (const drive of scan.drives) {
     const missing = [];
+    if (!valid(drive.temperature)) missing.push('temperature');
     if (!valid(drive.powerOnHours)) missing.push('power-on time');
     if (!valid(drive.lifetimeWritesBytes)) missing.push('Lifetime Writes');
     if (!missing.length) continue;
@@ -20,7 +23,7 @@ function reportMissing(scan, reason) {
 
 export function mergeSmart(drive, data) {
   // Never associate measurements using model name or enumeration order.
-  if (!serial(drive.serial) || serial(drive.serial) !== serial(data.serial_number)) return false;
+  if (!matchesSerial(drive, data.serial_number)) return false;
   if (typeof data.model_name === 'string' && data.model_name.trim()) drive.smartModel = data.model_name.trim();
   const nvme = data.nvme_smart_health_information_log;
   const metrics = {
@@ -56,7 +59,7 @@ export function runSmart(file, args) {
 }
 
 export async function enrichSmart(scan, run = runSmart, executable) {
-  if (!scan.drives.some((d) => !valid(d.powerOnHours) || !valid(d.lifetimeWritesBytes))) return scan;
+  if (!scan.drives.some((d) => !valid(d.temperature) || !valid(d.powerOnHours) || !valid(d.lifetimeWritesBytes))) return scan;
   const file = executable || process.env.SMARTCTL_PATH || [process.env.ProgramFiles, process.env['ProgramFiles(x86)']]
     .filter(Boolean).map((folder) => join(folder, 'smartmontools', 'bin', 'smartctl.exe')).find(existsSync) || 'smartctl.exe';
   try {
@@ -68,7 +71,7 @@ export async function enrichSmart(scan, run = runSmart, executable) {
     }));
     for (const result of results) {
       if (result.status !== 'fulfilled') continue;
-      const matches = scan.drives.filter((d) => serial(d.serial) && serial(d.serial) === serial(result.value.serial_number));
+      const matches = scan.drives.filter((d) => matchesSerial(d, result.value.serial_number));
       if (matches.length === 1) mergeSmart(matches[0], result.value);
     }
     reportMissing(scan, 'The optional SMART fallback did not supply these readings.');
