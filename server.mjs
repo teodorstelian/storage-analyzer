@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { createExporter } from './metrics.mjs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { openHistory } from './history.mjs';
@@ -11,6 +12,13 @@ const history = openHistory(fileURLToPath(new URL('./data/drive-health.sqlite', 
 
 const root = new URL('./public/', import.meta.url);
 let pending;
+let latestScan, scanHealthy = false;
+const exporter = createExporter(() => ({scan: latestScan, healthy: scanHealthy}), {host: process.env.METRICS_HOST || '127.0.0.1'});
+const settingsFile = new URL('./data/metrics.json', import.meta.url);
+let configuring = false;
+try {
+  if (JSON.parse(await readFile(settingsFile, 'utf8')).enabled) await exporter.setEnabled(true);
+} catch (error) { if (error.code !== 'ENOENT') console.error('Metrics settings:', error.message); }
 function scan() {
   if (pending) return pending;
   pending = new Promise((resolve, reject) => {
@@ -22,16 +30,43 @@ function scan() {
     for (const drive of data.drives) drive.displayName = displayName(drive);
     try { history.annotateErrors(data); history.save(data); }
     catch (error) { console.error('Unable to save scan:', error.message); data.warnings.push('This scan could not be saved to the local database.'); }
+    latestScan = data; scanHealthy = true;
     return data;
-  }).finally(() => { pending = undefined; });
+  }).catch(error => { scanHealthy = false; throw error; }).finally(() => { pending = undefined; });
   return pending;
 }
 const server = http.createServer(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'");
-  if (req.method !== 'GET') { res.writeHead(405).end(); return; }
   const path = new URL(req.url, 'http://localhost').pathname;
+  if (path === '/api/metrics') {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.method === 'POST') {
+      if (req.headers.origin !== `http://${req.headers.host}` || req.headers['content-type'] !== 'application/json') { res.writeHead(403).end(); return; }
+      if (configuring) { res.writeHead(409).end(JSON.stringify({error:'A settings change is in progress.'})); return; }
+      configuring = true;
+      const previous = exporter.enabled;
+      try {
+        let body = ''; for await (const chunk of req) { body += chunk; if (body.length > 128) throw new Error('Invalid settings.'); }
+        const {enabled} = JSON.parse(body);
+        if (typeof enabled !== 'boolean') throw new Error('Invalid settings.');
+        await exporter.setEnabled(enabled);
+        await writeFile(settingsFile, JSON.stringify({enabled}));
+        if (enabled && !latestScan) scan().catch(e => console.error(e.message));
+      } catch (error) {
+        await exporter.setEnabled(previous).catch(() => {});
+        res.writeHead(400).end(JSON.stringify({error:error.message})); return;
+      } finally { configuring = false; }
+    } else if (req.method !== 'GET') { res.writeHead(405).end(); return; }
+    res.end(JSON.stringify({enabled:exporter.enabled, host:process.env.METRICS_HOST || '127.0.0.1', port:9431})); return;
+  }
+  if (req.method !== 'GET') { res.writeHead(405).end(); return; }
+  if (path === '/grafana-dashboard.json') {
+    res.setHeader('Content-Type','application/json');
+    res.setHeader('Content-Disposition','attachment; filename="drive-health.json"');
+    res.end(await readFile(new URL('./grafana/drive-health.json', import.meta.url))); return;
+  }
   if (path === '/api/records') {
     res.setHeader('Content-Type', 'application/json');
     try { res.end(JSON.stringify(history.records())); }
@@ -60,4 +95,5 @@ const server = http.createServer(async (req, res) => {
 });
 server.listen(Number(process.env.PORT || 4317), '127.0.0.1', () => console.log(`Drive Health is ready at http://127.0.0.1:${server.address().port}`));
 setInterval(() => scan().catch((error) => console.error('Scheduled scan failed:', error.message)), 5 * 60 * 1000).unref();
+if (exporter.enabled) scan().catch(e => console.error(e.message));
 server.on('error', (error) => { console.error(error.code === 'EADDRINUSE' ? 'This port is already in use. Stop the previous copy, or set $env:PORT = "4318" and restart.' : error.message); process.exitCode = 1; });

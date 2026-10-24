@@ -1,4 +1,19 @@
 const $ = (id) => document.getElementById(id);
+let metricsEnabled = false;
+async function metricsSettings(update) {
+  $('metrics-toggle').disabled = true;
+  try {
+    const response = await fetch('/api/metrics', update === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:update})});
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Unable to change exporter settings.');
+    metricsEnabled = result.enabled;
+    $('metrics-toggle').textContent = metricsEnabled ? 'Stop exporting metrics' : 'Start exporting metrics';
+    $('metrics-status').textContent = metricsEnabled ? `Exporter running on ${result.host}:${result.port}/metrics. Connect Prometheus using the README setup.` : 'Exporting is off. Setting is saved across restarts.';
+  } catch (error) { $('metrics-status').textContent = error.message; $('metrics-toggle').textContent = metricsEnabled ? 'Stop exporting metrics' : 'Start exporting metrics'; }
+  finally { $('metrics-toggle').disabled = false; }
+}
+$('metrics-toggle').addEventListener('click', () => metricsSettings(!metricsEnabled));
+metricsSettings();
 let drives = [];
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const present = (v) => v !== null && v !== undefined && Number.isFinite(Number(v));

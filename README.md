@@ -1,8 +1,35 @@
 # Drive Health
 
-A local, read-only Windows dashboard for HDD and SSD health. Uses Windows Storage to report physical drive inventory, health status, temperature, rated life used, power-on hours, and uncorrected error counts when supported. No dependencies, accounts, telemetry, or external requests.
+A local, read-only Windows dashboard for HDD and SSD health. Uses Windows Storage to report physical drive inventory, health status, temperature, rated life used, power-on hours, and uncorrected error counts when supported. No dependencies or accounts. Optional Prometheus export is disabled by default.
 
-## Run
+## Grafana / Rig Pulse integration
+
+Overview now has **Start exporting metrics**, **Stop exporting metrics**, **Download Grafana dashboard**, and **Open Grafana** controls. Exporter settings persist in `data/metrics.json`. The app must remain running. Exporting uses a separate metrics-only listener on port 9431; the app and database APIs remain on localhost:4317.
+
+1. For local Prometheus, the default endpoint is `http://127.0.0.1:9431/metrics`. Enable exporting on Overview.
+2. Rig Pulse runs Prometheus inside Docker. To make the Windows exporter reachable, explicitly set `$env:METRICS_HOST` to a Windows host IP reachable from Docker Desktop before starting this app, then enable exporting. The default loopback binding may not be reachable through Docker Desktop's host gateway. Restart the app after changing this variable. The exporter has no authentication: use a trusted interface and restrict inbound TCP 9431 to Docker in Windows Firewall. Drive names and health readings are exported; serials are replaced by the same hashed identities used in local history.
+3. Run the setup script below once. It backs up Rig Pulse's Prometheus config, validates the added job with its running container, copies the dashboard into its already mounted dashboard directory, and reloads Prometheus. It requires the existing Rig Pulse stack to be running. It does not change Docker services or credentials.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\setup-rig-pulse.ps1
+```
+
+Use `-RigPulsePath 'D:\Github\rig-pulse'` for another location. The script writes to that repository when you run it. If its configuration layout differs, add this job under `scrape_configs` manually and reload Prometheus:
+
+```yaml
+  - job_name: drive-health
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:9431']
+```
+
+Check the `drive-health` target at http://127.0.0.1:9090/targets, then open http://127.0.0.1:3000/d/drive-health. If host gateway routing does not reach your chosen bind IP, use that IP explicitly in the target. A firewall rule may also be required. Alternatively, import the downloaded JSON in Grafana; it expects Rig Pulse's existing Prometheus datasource UID `prometheus`.
+
+The dashboard includes temperature, wear, power-on hours, host writes, Windows health, SMART sector/CRC counts, and read/write errors. Scans still run every five minutes; scraping does not scan hardware. Missing sensors are omitted, disconnected drives disappear on the next successful scan, and failed scans set `drive_health_scan_success` to zero while retaining the last successful timestamp. Dashboard queries hide failed or older-than-15-minute snapshots. Use that success metric, timestamp, and Prometheus `up` to distinguish a collection problem from healthy hardware. Historical SQLite readings are not backfilled into Prometheus; Rig Pulse retains new metrics for its configured 15 days. Stopping export does not delete already collected data or remove the dashboard.
+
+Format references: [Prometheus exposition](https://prometheus.io/docs/instrumenting/exposition_formats/) and [Grafana provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/).
+
+## Running the app
 
 Install Node.js 22.13 or newer (Node.js 24 LTS recommended), then run in this folder:
 

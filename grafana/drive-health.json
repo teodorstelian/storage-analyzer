@@ -1,0 +1,340 @@
+{
+  "uid": "drive-health",
+  "title": "Drive Health",
+  "schemaVersion": 41,
+  "version": 1,
+  "tags": [
+    "storage",
+    "rig-pulse"
+  ],
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 100,
+      "title": "Collection status and scan freshness",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Drive Health scans every 5 minutes while running. Missing sensors are omitted. Charts hide failed scans and readings older than 15 minutes. Windows health is not a failure prediction. Check Prometheus target **drive-health** if all charts are empty. SQLite history is not backfilled."
+      }
+    },
+    {
+      "id": 1,
+      "title": "Temperature",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_temperature_celsius{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Rated life used",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_wear_percent{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Power-on hours",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_power_on_hours{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Lifetime host writes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_host_writes_bytes{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Windows health (0 unknown, 1 healthy, 2 warning, 3 unhealthy)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_status{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Reallocated sectors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_smart_reallocated_sectors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Pending sectors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_smart_pending_sectors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Offline uncorrectable sectors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 27,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_smart_uncorrectable_sectors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "CRC errors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_smart_crc_errors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Uncorrected read errors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_read_errors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Uncorrected write errors",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "drive_health_write_errors{job=\"drive-health\"} and on(job,instance) (drive_health_scan_success == 1) and on(job,instance) (time() - drive_health_scan_timestamp_seconds < 900)",
+          "legendFormat": "{{name}} · {{drive}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
